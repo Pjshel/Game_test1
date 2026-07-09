@@ -2,3 +2,9 @@ node_modules/
 dist/
 SPINE/
 package-lock.json
+
+# 宪法归档为逐字保真的外部规格文本,格式化工具不得改写
+docs/CONSTITUTION.md
+docs/CORE_EXPERIENCE.md
+docs/MOTIVATION_REWARDS.md
+docs/IN_RUN_SYSTEMS.md
