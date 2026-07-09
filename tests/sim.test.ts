@@ -42,6 +42,17 @@ describe('Simulation.step', () => {
     expect(() => sim.step([{ type: 'move', dx: Number.NaN, dy: 0 }])).toThrow();
   });
 
+  it('step 全有或全无:批内任一命令非法时,状态与 tick 均不变', () => {
+    const sim = new Simulation();
+    expect(() =>
+      sim.step([
+        { type: 'move', dx: 1, dy: 0 },
+        { type: 'move', dx: 5, dy: 0 },
+      ]),
+    ).toThrow();
+    expect(sim.snapshot()).toEqual({ tick: 0, entities: [{ id: 0, x: 0, y: 0 }] });
+  });
+
   it('拒绝未知命令类型与缺字段命令', () => {
     const sim = new Simulation();
     expect(() => sim.step([{ type: 'jump' } as never])).toThrow();

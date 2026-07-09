@@ -8,6 +8,11 @@ on:
 permissions:
   contents: read
 
+# 同一时间只允许一个 Pages 部署,防止旧提交的 run 后完成覆盖新版本
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -39,6 +44,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Enable GitHub Pages (first run)
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

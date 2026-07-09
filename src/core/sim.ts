@@ -36,12 +36,13 @@ export class Simulation {
   }
 
   /**
-   * 推进恰好一个 tick(1/60 秒)。命令在边界上经 zod 校验,
-   * 非法命令抛出 ZodError;同 tick 多条 move 依次叠加生效。
+   * 推进恰好一个 tick(1/60 秒)。命令在边界上经 zod 校验,语义全有或全无:
+   * 先整批校验,任一非法命令抛出 ZodError 且模拟状态与 tick 完全不变;
+   * 校验通过后同 tick 多条 move 依次叠加生效。
    */
   step(commands: readonly Command[]): void {
-    for (const raw of commands) {
-      const command = CommandSchema.parse(raw);
+    const parsed = commands.map((raw) => CommandSchema.parse(raw));
+    for (const command of parsed) {
       this.player.x += command.dx * MOVE_SPEED_PER_TICK;
       this.player.y += command.dy * MOVE_SPEED_PER_TICK;
     }

@@ -11,5 +11,7 @@ new Phaser.Game({
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  // 默认只跟踪 1 个触摸指针;放宽以便摇杆手指之外的手指也被跟踪/接管
+  input: { activePointers: 3 },
   scene: [GameScene],
 });
