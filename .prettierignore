@@ -1,0 +1,4 @@
+node_modules/
+dist/
+SPINE/
+package-lock.json

@@ -1,0 +1,16 @@
+# dependencies / build output
+node_modules/
+dist/
+
+# OS noise
+.DS_Store
+
+# local working material (WP prompts source folder; constitutions are archived in docs/)
+SPINE/
+
+# editor
+.vscode/
+.idea/
+
+# logs
+*.log
