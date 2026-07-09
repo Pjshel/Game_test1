@@ -8,6 +8,9 @@ dist/
 # local working material (WP prompts source folder; constitutions are archived in docs/)
 SPINE/
 
+# local art staging area (whitelist doc archived in docs/ART_ASSETS.md; assets enter src via curation)
+art_res/
+
 # editor
 .vscode/
 .idea/
