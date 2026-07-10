@@ -1,0 +1,42 @@
+{
+  "player": {
+    "moveSpeed": 5.33,
+    "maxHp": 5,
+    "maxShield": 4,
+    "shieldRegenDelayS": 3,
+    "shieldRegenPerS": 1,
+    "iframesS": 0.6
+  },
+  "energy": {
+    "max": 200,
+    "orbEnergy": 10,
+    "orbPickupRadius": 1.2
+  },
+  "weapon": {
+    "fireRate": 2.5,
+    "damage": 1,
+    "energyCost": 1,
+    "bulletSpeedMul": 2
+  },
+  "enemies": {
+    "bulletSpeedMul": 1.2,
+    "fighterFirePeriodS": 1.5,
+    "wandererSpeedMul": 0.7,
+    "bulletDamage": 1,
+    "knockbackTiles": 0.4,
+    "countStatic": 2,
+    "countWanderer": 2,
+    "countFighter": 1
+  },
+  "flow": {
+    "respawnDelayS": 1,
+    "deathFreezeS": 0.5
+  },
+  "juice": {
+    "hitStopHitMs": 30,
+    "hitStopKillMs": 50,
+    "shakeHit": 0.002,
+    "shakeKill": 0.005,
+    "shakeBig": 0.01
+  }
+}

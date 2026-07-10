@@ -14,7 +14,7 @@ export class VirtualJoystick {
   private activePointerId: number | null = null;
   private dir: Direction = { dx: 0, dy: 0 };
 
-  constructor(scene: Phaser.Scene) {
+  constructor(scene: Phaser.Scene, ignorePointer?: (x: number, y: number) => boolean) {
     this.base = scene.add
       .circle(0, 0, BASE_RADIUS, 0xffffff, 0.06)
       .setStrokeStyle(2, 0xffffff, 0.25)
@@ -25,6 +25,9 @@ export class VirtualJoystick {
     scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (!pointer.wasTouch || this.activePointerId !== null) {
         return;
+      }
+      if (ignorePointer?.(pointer.x, pointer.y)) {
+        return; // 该触摸属于开火按钮等其他控件
       }
       this.activePointerId = pointer.id;
       this.base.setPosition(pointer.x, pointer.y).setVisible(true);

@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/core/command';
-import { FixedStepDriver, Simulation, TICK_MS } from '../src/core/sim';
+import { FixedStepDriver, Simulation, TICK_MS, type SimEvent } from '../src/core/sim';
+import { makeParams } from './helpers/params';
 
 function makeDriver(): { driver: FixedStepDriver; sim: Simulation; tickLog: () => number } {
-  const sim = new Simulation();
+  const sim = new Simulation(
+    makeParams({ enemies: { countStatic: 0, countWanderer: 0, countFighter: 0 } }),
+    1,
+    [],
+  );
   const driver = new FixedStepDriver(sim);
   return { driver, sim, tickLog: () => sim.snapshot().tick };
 }
@@ -55,20 +60,26 @@ describe('FixedStepDriver(accumulator 模式)', () => {
     driver.advance(Number.POSITIVE_INFINITY, NO_COMMANDS);
     driver.advance(-100, NO_COMMANDS);
     expect(tickLog()).toBe(0);
-    // 累积器未被污染:再注入一个整 tick 恰好推进 1 次
     driver.advance(TICK_MS, NO_COMMANDS);
     expect(tickLog()).toBe(1);
   });
 
-  it('每个 tick 调用一次 getCommands 并将命令送入模拟', () => {
-    const { driver, sim } = makeDriver();
+  it('每个 tick 调用一次 getCommands,并把事件经 onTick 转发', () => {
+    const { driver } = makeDriver();
     let calls = 0;
+    const batches: SimEvent[][] = [];
     // 3.5 个 tick 的时间:避开 N×TICK_MS 的浮点等值边界,稳定推进 3 tick
-    driver.advance(TICK_MS * 3.5, () => {
-      calls += 1;
-      return [{ type: 'move', dx: 1, dy: 0 }];
-    });
+    driver.advance(
+      TICK_MS * 3.5,
+      () => {
+        calls += 1;
+        return [{ type: 'fire' }];
+      },
+      (events) => batches.push(events),
+    );
     expect(calls).toBe(3);
-    expect(sim.snapshot().entities[0]!.x).toBeGreaterThan(0);
+    expect(batches).toHaveLength(3);
+    // 空场无锁定目标且从未移动过:aimDir 默认 (1,0),首 tick 应有开火事件
+    expect(batches[0]!.some((e) => e.type === 'playerFired')).toBe(true);
   });
 });
