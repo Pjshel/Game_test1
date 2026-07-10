@@ -16,7 +16,7 @@ interface SliderDef {
 }
 
 const SLIDERS: readonly SliderDef[] = [
-  { path: 'player.moveSpeed', label: '玩家移速(格/秒)', min: 2, max: 10, step: 0.05 },
+  { path: 'player.moveSpeed', label: '玩家移速(格/秒)', min: 2, max: 10, step: 0.01 },
   { path: 'weapon.bulletSpeedMul', label: '弹速系数(×移速)', min: 1, max: 4, step: 0.05 },
   { path: 'weapon.fireRate', label: '武器射速(发/秒)', min: 0.5, max: 10, step: 0.1 },
   { path: 'weapon.damage', label: '武器伤害', min: 1, max: 5, step: 1 },
@@ -42,6 +42,7 @@ const SLIDERS: readonly SliderDef[] = [
   { path: 'juice.shakeHit', label: '震屏·微(命中)', min: 0, max: 0.01, step: 0.0005 },
   { path: 'juice.shakeKill', label: '震屏·中(击杀)', min: 0, max: 0.02, step: 0.0005 },
   { path: 'juice.shakeBig', label: '震屏·大(预留爆炸)', min: 0, max: 0.05, step: 0.001 },
+  { path: 'juice.flashFrames', label: '受击闪白(帧@60Hz)', min: 0, max: 10, step: 1 },
   { path: 'flow.respawnDelayS', label: '靶子重生延迟(秒)', min: 0, max: 5, step: 0.1 },
   { path: 'flow.deathFreezeS', label: '死亡定格(秒)', min: 0, max: 2, step: 0.05 },
 ];
@@ -172,7 +173,8 @@ export class DebugPanel {
   }
 
   private format(v: number): string {
-    return Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000);
+    // 精度须细于最小 step(0.0005),否则震屏相邻两档读数相同
+    return Number.isInteger(v) ? String(v) : String(Math.round(v * 10000) / 10000);
   }
 
   private exportJson(button: HTMLButtonElement): void {
@@ -184,17 +186,20 @@ export class DebugPanel {
     link.download = 'feel-params-v0.json';
     link.click();
     URL.revokeObjectURL(url);
-    const done = (): void => {
+    const feedback = (text: string): void => {
       const old = button.textContent;
-      button.textContent = '已复制+下载 ✓';
+      button.textContent = text;
       setTimeout(() => {
         button.textContent = old;
       }, 1600);
     };
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(json).then(done, done);
+      navigator.clipboard.writeText(json).then(
+        () => feedback('已复制+下载 ✓'),
+        () => feedback('已下载(剪贴板不可用)'),
+      );
     } else {
-      done();
+      feedback('已下载(剪贴板不可用)');
     }
   }
 }

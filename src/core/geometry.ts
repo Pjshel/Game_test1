@@ -19,9 +19,13 @@ export function dist2(a: Vec2, b: Vec2): number {
   return dx * dx + dy * dy;
 }
 
-/** 归一化;零向量与非有限输入返回 (0, 0) */
+/**
+ * 归一化;零向量与非有限输入返回 (0, 0)。
+ * 用 sqrt(x²+y²) 而非 Math.hypot:sqrt 是 IEEE 精确舍入运算,
+ * hypot 则允许引擎近似——模拟层要求跨引擎逐位确定。
+ */
 export function normalize(v: Vec2): Vec2 {
-  const length = Math.hypot(v.x, v.y);
+  const length = Math.sqrt(v.x * v.x + v.y * v.y);
   if (length === 0 || !Number.isFinite(length)) {
     return { x: 0, y: 0 };
   }

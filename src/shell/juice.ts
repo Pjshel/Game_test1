@@ -9,10 +9,13 @@ import { Sfx } from './sfx';
  * 消费模拟层事件,负责顿帧、震屏三档、受击闪白、几何粒子与三层音效。
  * 顿帧的实现是表现层暂停注入 dt——模拟层确定性不受任何影响。
  */
+/** 闪白帧数以 60Hz 帧为基准折算成毫秒,与显示器刷新率解耦 */
+const FRAME_MS = 1000 / 60;
+
 export class JuiceDirector {
   private hitStopMs = 0;
-  private readonly flashFrames = new Map<EntityId, number>();
-  private playerFlash = 0;
+  private readonly flashMsLeft = new Map<EntityId, number>();
+  private playerFlashMs = 0;
   readonly sfx = new Sfx();
 
   constructor(
@@ -27,6 +30,8 @@ export class JuiceDirector {
     for (const event of events) {
       switch (event.type) {
         case 'playerFired':
+          // 弹壳粒子(宪法§6清单):枪口后方弹出一两粒暗色小方块
+          this.burst(event.x - event.dirX * 0.3, event.y - event.dirY * 0.3, 2, 0x8a94a3, 110);
           this.sfx.fire();
           break;
         case 'enemyFired':
@@ -37,7 +42,7 @@ export class JuiceDirector {
           if (juice.shakeHit > 0) {
             camera.shake(60, juice.shakeHit);
           }
-          this.flashFrames.set(event.id, 2);
+          this.flashMsLeft.set(event.id, juice.flashFrames * FRAME_MS);
           this.burst(event.x, event.y, 4, 0xf2f6f9, 90);
           this.sfx.hit();
           break;
@@ -53,7 +58,7 @@ export class JuiceDirector {
           if (juice.shakeKill > 0) {
             camera.shake(110, juice.shakeKill);
           }
-          this.playerFlash = 2;
+          this.playerFlashMs = juice.flashFrames * FRAME_MS;
           this.burst(event.x, event.y, 6, 0xff8a7a, 130);
           this.sfx.playerHit();
           break;
@@ -90,26 +95,26 @@ export class JuiceDirector {
     return 0;
   }
 
-  /** 实体本帧是否处于受击闪白(2 帧,敌我皆有) */
+  /** 实体本帧是否处于受击闪白(敌我皆有) */
   isFlashing(id: EntityId): boolean {
-    return (this.flashFrames.get(id) ?? 0) > 0;
+    return (this.flashMsLeft.get(id) ?? 0) > 0;
   }
 
   isPlayerFlashing(): boolean {
-    return this.playerFlash > 0;
+    return this.playerFlashMs > 0;
   }
 
-  /** 每渲染帧结束时调用,推进闪白帧计数 */
-  tickFrame(): void {
-    for (const [id, frames] of this.flashFrames) {
-      if (frames <= 1) {
-        this.flashFrames.delete(id);
+  /** 每渲染帧结束时调用,按真实流逝时间推进闪白计时 */
+  tickFrame(frameDtMs: number): void {
+    for (const [id, msLeft] of this.flashMsLeft) {
+      if (msLeft <= frameDtMs) {
+        this.flashMsLeft.delete(id);
       } else {
-        this.flashFrames.set(id, frames - 1);
+        this.flashMsLeft.set(id, msLeft - frameDtMs);
       }
     }
-    if (this.playerFlash > 0) {
-      this.playerFlash -= 1;
+    if (this.playerFlashMs > 0) {
+      this.playerFlashMs = Math.max(0, this.playerFlashMs - frameDtMs);
     }
   }
 

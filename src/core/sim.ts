@@ -179,8 +179,9 @@ export class Simulation {
     this.energy = Math.min(this.energy, this.params.energy.max);
   }
 
+  /** 返回参数的独立副本;修改副本不影响模拟(写入只能走 applyParams 的校验门) */
   getParams(): FeelParams {
-    return this.params;
+    return structuredClone(this.params);
   }
 
   /**
@@ -378,8 +379,7 @@ export class Simulation {
       if (c.wanderTicks <= 0 || c.vel === undefined) {
         // 0.5~1.5 秒换一次方向;可原地停顿(约 1/5 概率)
         const stop = this.rng.combatStream.chance(0.2);
-        const angle = this.rng.combatStream.range(0, Math.PI * 2);
-        c.vel = stop ? { x: 0, y: 0 } : { x: Math.cos(angle), y: Math.sin(angle) };
+        c.vel = stop ? { x: 0, y: 0 } : this.rollUnitDir();
         c.wanderTicks = this.rng.combatStream.int(30, 90);
       }
       c.pos = clampToRect(
@@ -511,6 +511,10 @@ export class Simulation {
     for (const id of killedTargets) {
       this.registry.destroy(id);
     }
+    // 快照不变量:锁定 id 永远指向在场实体;锁定目标被击杀则立即解锁
+    if (this.lockedTargetId !== null && killedTargets.includes(this.lockedTargetId)) {
+      this.lockedTargetId = null;
+    }
   }
 
   private enemyBulletHitSystem(events: SimEvent[]): void {
@@ -599,6 +603,15 @@ export class Simulation {
       this.respawnTicksLeft = -1;
       return;
     }
+    // 三类数量全为 0(调参面板可达):无兵可生,不起表也不发事件,避免空转刷屏
+    const configured =
+      this.params.enemies.countStatic +
+      this.params.enemies.countWanderer +
+      this.params.enemies.countFighter;
+    if (configured === 0) {
+      this.respawnTicksLeft = -1;
+      return;
+    }
     if (this.respawnTicksLeft < 0) {
       // 全灭:起表,1 秒后重生一组(练靶场性质,无门无波次)
       this.respawnTicksLeft = Math.round(this.params.flow.respawnDelayS * TICK_RATE);
@@ -643,6 +656,23 @@ export class Simulation {
       wanderTicks: 0,
       fireTicks: Math.max(1, Math.round(this.params.enemies.fighterFirePeriodS * TICK_RATE)),
     });
+  }
+
+  /**
+   * 拒绝采样生成单位方向:只用四则运算与 sqrt(IEEE 精确舍入),
+   * 避开 Math.cos/sin 的引擎近似差异——跨引擎确定性军规。
+   */
+  private rollUnitDir(): Vec2 {
+    for (let attempt = 0; attempt < 32; attempt++) {
+      const x = this.rng.combatStream.range(-1, 1);
+      const y = this.rng.combatStream.range(-1, 1);
+      const len2 = x * x + y * y;
+      if (len2 > 0.01 && len2 <= 1) {
+        const len = Math.sqrt(len2);
+        return { x: x / len, y: y / len };
+      }
+    }
+    return { x: 1, y: 0 };
   }
 
   /** 距玩家至少 4 格的随机落点;20 次重掷后接受任意点(房间小时防死循环) */

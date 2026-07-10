@@ -68,6 +68,8 @@ export const FeelParamsSchema = z.object({
     shakeHit: nonNegative,
     shakeKill: nonNegative,
     shakeBig: nonNegative,
+    /** 受击闪白帧数(以 60Hz 帧为基准换算为毫秒,不随显示器刷新率漂移) */
+    flashFrames: z.number().int().min(0).max(30),
   }),
 });
 

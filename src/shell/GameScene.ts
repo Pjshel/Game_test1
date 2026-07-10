@@ -91,6 +91,9 @@ export class GameScene extends Phaser.Scene {
 
     this.buildHud();
 
+    // 右键菜单会吞掉 mouseup 导致开火状态卡死;鼠标在本游戏里只是开火键
+    this.input.mouse?.disableContextMenu();
+
     this.keyboard = new KeyboardInput(this);
     this.fire = new FireInput(this);
     this.joystick = new VirtualJoystick(this, (x, y) => this.fire.claimsPointer(x, y));
@@ -114,7 +117,7 @@ export class GameScene extends Phaser.Scene {
         return resolveCommands(
           this.keyboard.direction(),
           this.joystick.direction(),
-          this.fire.held(),
+          this.fire.sampleHeld(),
         );
       },
       (events) => this.juice.onEvents(events),
@@ -123,7 +126,7 @@ export class GameScene extends Phaser.Scene {
 
     this.syncWorld(alpha);
     this.syncHud();
-    this.juice.tickFrame();
+    this.juice.tickFrame(delta);
   }
 
   // ---- rendering ----
@@ -225,11 +228,6 @@ export class GameScene extends Phaser.Scene {
     playerView.obj.setAlpha(player.invulnerable ? 0.55 : 1); // 无敌帧半透明提示
     this.applyFlash(playerView, this.juice.isPlayerFlashing());
 
-    // 瞄准指示:锁定目标或移动朝向(短线,纯可读性)
-    const px = playerView.obj.x;
-    const py = playerView.obj.y;
-    this.aimLine.setTo(px, py, px + player.aimX * 0.8 * TILE_PX, py + player.aimY * 0.8 * TILE_PX);
-
     // 靶子
     for (const target of this.curr.targets) {
       seen.add(target.id);
@@ -274,16 +272,32 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // 锁定标记(宪法§2:锁定目标头顶小标记)
+    // 锁定标记(宪法§2:锁定目标头顶小标记);三角形默认中心原点,直接对准目标 x
     const lockedId = this.curr.lockedTargetId;
     const lockedView = lockedId === null ? undefined : this.views.get(lockedId);
     if (lockedView) {
       this.lockMarker
         .setVisible(true)
-        .setPosition(lockedView.obj.x - 6, lockedView.obj.y - 0.85 * TILE_PX);
+        .setPosition(lockedView.obj.x, lockedView.obj.y - 0.85 * TILE_PX);
     } else {
       this.lockMarker.setVisible(false);
     }
+
+    // 瞄准指示短线:有锁定目标时指向实际弹道方向,否则指向移动朝向
+    const px = playerView.obj.x;
+    const py = playerView.obj.y;
+    let aimX = player.aimX;
+    let aimY = player.aimY;
+    if (lockedView) {
+      const dx = lockedView.obj.x - px;
+      const dy = lockedView.obj.y - py;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len > 0) {
+        aimX = dx / len;
+        aimY = dy / len;
+      }
+    }
+    this.aimLine.setTo(px, py, px + aimX * 0.8 * TILE_PX, py + aimY * 0.8 * TILE_PX);
   }
 
   private ensureView(id: EntityId, build: () => EntityView): EntityView {

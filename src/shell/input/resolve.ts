@@ -18,7 +18,8 @@ export function resolveCommands(
 ): Command[] {
   const commands: Command[] = [];
   const raw = joystick ?? keyboard;
-  const length = Math.hypot(raw.dx, raw.dy);
+  // sqrt 与模拟层同源(IEEE 精确),命令数值跨引擎逐位一致
+  const length = Math.sqrt(raw.dx * raw.dx + raw.dy * raw.dy);
   if (length > 0 && Number.isFinite(length)) {
     const scale = length > 1 ? 1 / length : 1;
     commands.push({ type: 'move', dx: raw.dx * scale, dy: raw.dy * scale });

@@ -33,6 +33,7 @@ const BASELINE: FeelParams = {
     shakeHit: 0.002,
     shakeKill: 0.005,
     shakeBig: 0.01,
+    flashFrames: 2,
   },
 };
 
