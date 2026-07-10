@@ -8,6 +8,7 @@ import { KeyboardInput } from './input/keyboard';
 import { VirtualJoystick } from './input/joystick';
 import { resolveCommands } from './input/resolve';
 import { JuiceDirector } from './juice';
+import { showStartOverlay } from './startOverlay';
 
 /** 每格像素数:16×9 格 → 960×540 画布 */
 export const TILE_PX = 60;
@@ -51,6 +52,11 @@ export class GameScene extends Phaser.Scene {
   private keyboard!: KeyboardInput;
   private joystick!: VirtualJoystick;
   private fire!: FireInput;
+
+  /** 点击开始遮罩前世界静止(不注入 dt) */
+  private started = false;
+  private sinceStartMs = 0;
+  private youLabel!: Phaser.GameObjects.Text;
 
   private readonly views = new Map<EntityId, EntityView>();
   private lockMarker!: Phaser.GameObjects.Triangle;
@@ -102,6 +108,22 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', () => this.juice.sfx.unlock());
     this.input.keyboard?.on('keydown', () => this.juice.sfx.unlock());
 
+    // 主角标注:跟随玩家的「你」字,开局数秒后淡出
+    this.youLabel = this.add
+      .text(0, 0, '你 · WASD/方向键', {
+        fontSize: '13px',
+        color: '#eaf6f4',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(9);
+
+    // 点击遮罩才开局:拿焦点、解锁音频、让玩家先看清主角
+    showStartOverlay(() => {
+      this.started = true;
+      this.juice.sfx.unlock();
+    });
+
     new DebugPanel(
       () => this.sim.getParams(),
       (next) => this.sim.applyParams(next),
@@ -109,7 +131,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   override update(_time: number, delta: number): void {
-    const dt = this.juice.consumeDt(delta); // 顿帧:世界冻结,渲染继续
+    if (this.started) {
+      this.sinceStartMs += delta;
+      if (this.sinceStartMs > 6000 && this.youLabel.visible && this.youLabel.alpha === 1) {
+        this.tweens.add({ targets: this.youLabel, alpha: 0, duration: 600 });
+      }
+    }
+    // 未点击开始前世界静止;顿帧期间同样冻结,渲染照常
+    const dt = this.juice.consumeDt(this.started ? delta : 0);
     const alpha = this.driver.advance(
       dt,
       () => {
@@ -221,12 +250,16 @@ export class GameScene extends Phaser.Scene {
     const player = this.curr.player;
     seen.add(player.id);
     const playerView = this.ensureView(player.id, () => ({
-      obj: this.add.rectangle(0, 0, 0.7 * TILE_PX, 0.7 * TILE_PX, COLORS.player).setDepth(5),
+      obj: this.add
+        .rectangle(0, 0, 0.7 * TILE_PX, 0.7 * TILE_PX, COLORS.player)
+        .setStrokeStyle(2, 0xffffff, 0.9) // 白描边:主角与靶子的一眼区分
+        .setDepth(5),
       baseColor: COLORS.player,
     }));
     this.place(playerView, prevById.get(player.id), player, alpha);
     playerView.obj.setAlpha(player.invulnerable ? 0.55 : 1); // 无敌帧半透明提示
     this.applyFlash(playerView, this.juice.isPlayerFlashing());
+    this.youLabel.setPosition(playerView.obj.x, playerView.obj.y - 0.55 * TILE_PX);
 
     // 靶子
     for (const target of this.curr.targets) {

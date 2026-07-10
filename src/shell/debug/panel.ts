@@ -132,10 +132,17 @@ export class DebugPanel {
     root.append(header, body);
     document.body.append(root);
 
-    // 小屏(手机)默认折叠,避免遮挡打靶区
-    if (window.innerWidth < 900) {
-      header.click();
-    }
+    // 面板悬浮在画布之上:未悬停时半透明,玩家走到面板底下也看得见
+    root.style.transition = 'opacity 0.15s';
+    const syncOpacity = (hover: boolean): void => {
+      root.style.opacity = hover || this.collapsed ? '1' : '0.5';
+    };
+    root.addEventListener('mouseenter', () => syncOpacity(true));
+    root.addEventListener('mouseleave', () => syncOpacity(false));
+    header.addEventListener('click', () => syncOpacity(true));
+
+    // 默认折叠(桌面与手机皆然):打靶优先,调参时点开
+    header.click();
   }
 
   private buildRow(def: SliderDef): HTMLDivElement {
